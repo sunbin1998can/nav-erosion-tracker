@@ -41,3 +41,7 @@ This is a Flask web application for tracking NAV (Net Asset Value) erosion in co
 - Fetcher functions return `{'success': bool, 'data': ..., 'error': ...}` pattern
 - Thresholds stored as decimals (e.g., -0.06 for -6%) in database, converted to percentages in UI
 - Template filters `|pct` and `|currency` for formatting in Jinja2 templates
+
+## Workflow
+
+After implementing features or fixes, commit and push the changes to GitHub.
