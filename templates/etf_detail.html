@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block title %}{{ etf.name }} - NAV Erosion Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">{{ etf.name }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1>{{ etf.name }} <code class="fs-4">{{ etf.ticker }}</code></h1>
+        <p class="text-muted mb-0">Added {{ etf.added_date }}</p>
+    </div>
+    <div>
+        <a href="{{ url_for('refresh_etf', etf_id=etf.id) }}" class="btn btn-primary">
+            <i class="bi bi-arrow-clockwise"></i> Refresh Data
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+{% if metrics %}
+<!-- Metrics Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Current Price</h6>
+                <h3>{{ metrics.end_price|currency }}</h3>
+                <small class="text-muted">as of {{ metrics.window_end }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted">NAV Erosion (12m)</h6>
+                <h3 class="{% if metrics.nav_erosion_pct < 0 %}text-danger{% else %}text-success{% endif %}">
+                    {{ metrics.nav_erosion_pct|pct }}
+                </h3>
+                <small class="text-muted">
+                    {{ (metrics.end_price - metrics.start_price)|currency }} change
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted">True Return (12m)</h6>
+                <h3 class="{% if metrics.true_return_pct < 0 %}text-danger{% else %}text-success{% endif %}">
+                    {{ metrics.true_return_pct|pct }}
+                </h3>
+                <small class="text-muted">
+                    {{ metrics.total_distributions|currency }} in distributions
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Status</h6>
+                {% set flag_color = calculator.get_flag_color(metrics.flag) %}
+                <h3><span class="badge bg-{{ flag_color }} fs-4">{{ metrics.flag }}</span></h3>
+                <small class="text-muted">
+                    Thresholds: {{ (etf.warn_threshold * 100)|round(1) }}% / {{ (etf.sell_threshold * 100)|round(1) }}%
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Price History</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="priceChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Distributions</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="distributionChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- NAV Erosion Trend -->
+{% if erosion_dates and erosion_dates|length > 1 %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-graph-down"></i> NAV Erosion Trend</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="erosionChart" height="150"></canvas>
+    </div>
+</div>
+{% endif %}
+
+<!-- Monthly Breakdown Table -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-table"></i> Monthly Breakdown</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Month</th>
+                        <th class="text-end">Close Price</th>
+                        <th class="text-end">Distribution</th>
+                        <th class="text-end">Cumulative Erosion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in breakdown %}
+                    <tr>
+                        <td>{{ row.month }}</td>
+                        <td class="text-end">{{ row.close_price|currency }}</td>
+                        <td class="text-end">
+                            {% if row.distribution > 0 %}
+                            <span class="text-success">{{ row.distribution|currency }}</span>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <span class="{% if row.cumulative_erosion_pct < 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ row.cumulative_erosion_pct|pct }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    No data available yet. Click "Refresh Data" to fetch price history from Yahoo Finance.
+</div>
+{% endif %}
+
+<!-- ETF Info Card -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> ETF Information</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr>
+                        <th>Ticker</th>
+                        <td><code>{{ etf.ticker }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>Added Date</th>
+                        <td>{{ etf.added_date }}</td>
+                    </tr>
+                    <tr>
+                        <th>Warning Threshold</th>
+                        <td>{{ (etf.warn_threshold * 100)|round(1) }}%</td>
+                    </tr>
+                    <tr>
+                        <th>Sell Threshold</th>
+                        <td>{{ (etf.sell_threshold * 100)|round(1) }}%</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                {% if metrics %}
+                <table class="table table-sm">
+                    <tr>
+                        <th>Analysis Window</th>
+                        <td>{{ metrics.window_start }} to {{ metrics.window_end }}</td>
+                    </tr>
+                    <tr>
+                        <th>Starting Price</th>
+                        <td>{{ metrics.start_price|currency }}</td>
+                    </tr>
+                    <tr>
+                        <th>Ending Price</th>
+                        <td>{{ metrics.end_price|currency }}</td>
+                    </tr>
+                    <tr>
+                        <th>Total Distributions</th>
+                        <td>{{ metrics.total_distributions|currency }}</td>
+                    </tr>
+                </table>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if chart_dates %}
+// Price Chart
+const priceCtx = document.getElementById('priceChart').getContext('2d');
+new Chart(priceCtx, {
+    type: 'line',
+    data: {
+        labels: {{ chart_dates|tojson }},
+        datasets: [{
+            label: 'Close Price',
+            data: {{ chart_prices|tojson }},
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+            fill: true,
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: false
+            }
+        }
+    }
+});
+
+// Distribution Chart
+const distCtx = document.getElementById('distributionChart').getContext('2d');
+new Chart(distCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ chart_dates|tojson }},
+        datasets: [{
+            label: 'Distribution',
+            data: {{ chart_distributions|tojson }},
+            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+            borderColor: 'rgb(40, 167, 69)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+{% if erosion_dates and erosion_dates|length > 1 %}
+// Erosion Trend Chart
+const erosionCtx = document.getElementById('erosionChart').getContext('2d');
+new Chart(erosionCtx, {
+    type: 'line',
+    data: {
+        labels: {{ erosion_dates|tojson }},
+        datasets: [{
+            label: 'NAV Erosion %',
+            data: {{ erosion_values|tojson }},
+            borderColor: 'rgb(220, 53, 69)',
+            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+            fill: true,
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+{% endif %}
+</script>
+{% endblock %}

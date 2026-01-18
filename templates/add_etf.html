@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Add ETF - NAV Erosion Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">Add ETF</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Add New ETF</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_etf') }}">
+                    <div class="mb-3">
+                        <label for="ticker" class="form-label">Ticker Symbol *</label>
+                        <input type="text"
+                               class="form-control"
+                               id="ticker"
+                               name="ticker"
+                               value="{{ ticker|default('', true) }}"
+                               placeholder="e.g., HMAX.TO"
+                               required
+                               autofocus>
+                        <div class="form-text">
+                            Use Yahoo Finance ticker format. For Canadian ETFs, add .TO suffix (e.g., HMAX.TO, HDIF.TO)
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Display Name (optional)</label>
+                        <input type="text"
+                               class="form-control"
+                               id="name"
+                               name="name"
+                               value="{{ name|default('', true) }}"
+                               placeholder="e.g., HMAX">
+                        <div class="form-text">
+                            Leave blank to auto-detect from Yahoo Finance
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add ETF
+                        </button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Popular Covered Call ETFs</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Click to auto-fill the ticker:</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm ticker-btn" data-ticker="HMAX.TO">
+                        HMAX.TO
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm ticker-btn" data-ticker="HDIF.TO">
+                        HDIF.TO
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm ticker-btn" data-ticker="HYLD.TO">
+                        HYLD.TO
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm ticker-btn" data-ticker="HCAL.TO">
+                        HCAL.TO
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm ticker-btn" data-ticker="QQCC.TO">
+                        QQCC.TO
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm ticker-btn" data-ticker="QYLD">
+                        QYLD
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm ticker-btn" data-ticker="JEPI">
+                        JEPI
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm ticker-btn" data-ticker="JEPQ">
+                        JEPQ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.ticker-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('ticker').value = this.dataset.ticker;
+        document.getElementById('ticker').focus();
+    });
+});
+</script>
+{% endblock %}

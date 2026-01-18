@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - NAV Erosion Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-speedometer2"></i> Dashboard</h1>
+    <div>
+        <a href="{{ url_for('add_etf') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add ETF
+        </a>
+        <a href="{{ url_for('refresh_all') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-clockwise"></i> Refresh All
+        </a>
+    </div>
+</div>
+
+{% if alerts %}
+<div class="alert-banner mb-4">
+    {% for alert in alerts %}
+    <div class="alert alert-{{ 'danger' if alert.flag == 'SELL' else 'warning' }} d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <div>
+            <strong>{{ alert.flag }}:</strong> {{ alert.etf.name }} ({{ alert.etf.ticker }})
+            has {{ alert.nav_erosion|pct }} NAV erosion
+            <a href="{{ url_for('etf_detail', etf_id=alert.etf.id) }}" class="alert-link ms-2">View Details</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if etf_data %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-table"></i> ETF Scorecard</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ETF</th>
+                        <th>Ticker</th>
+                        <th class="text-end">Current Price</th>
+                        <th class="text-end">NAV Erosion</th>
+                        <th class="text-end">True Return</th>
+                        <th class="text-end">Distributions</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in etf_data %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('etf_detail', etf_id=item.etf.id) }}" class="text-decoration-none fw-bold">
+                                {{ item.etf.name }}
+                            </a>
+                        </td>
+                        <td><code>{{ item.etf.ticker }}</code></td>
+                        {% if item.metrics %}
+                        <td class="text-end">{{ item.metrics.end_price|currency }}</td>
+                        <td class="text-end">
+                            <span class="{% if item.metrics.nav_erosion_pct < 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ item.metrics.nav_erosion_pct|pct }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <span class="{% if item.metrics.true_return_pct < 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ item.metrics.true_return_pct|pct }}
+                            </span>
+                        </td>
+                        <td class="text-end">{{ item.metrics.total_distributions|currency }}</td>
+                        <td class="text-center">
+                            {% set flag_color = calculator.get_flag_color(item.metrics.flag) %}
+                            <span class="badge bg-{{ flag_color }}">{{ item.metrics.flag }}</span>
+                        </td>
+                        {% else %}
+                        <td colspan="5" class="text-center text-muted">No data - click Refresh</td>
+                        {% endif %}
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('etf_detail', etf_id=item.etf.id) }}"
+                                   class="btn btn-outline-primary" title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('refresh_etf', etf_id=item.etf.id) }}"
+                                   class="btn btn-outline-secondary" title="Refresh Data">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </a>
+                                <form action="{{ url_for('delete_etf', etf_id=item.etf.id) }}"
+                                      method="POST" class="d-inline"
+                                      onsubmit="return confirm('Remove {{ item.etf.name }} from tracking?')">
+                                    <button type="submit" class="btn btn-outline-danger" title="Remove">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-primary">{{ etf_data|length }}</h3>
+                <p class="text-muted mb-0">ETFs Tracked</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                {% set warning_count = alerts|selectattr('flag', 'equalto', 'WARNING')|list|length %}
+                <h3 class="text-warning">{{ warning_count }}</h3>
+                <p class="text-muted mb-0">Warnings</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                {% set sell_count = alerts|selectattr('flag', 'equalto', 'SELL')|list|length %}
+                <h3 class="text-danger">{{ sell_count }}</h3>
+                <p class="text-muted mb-0">Sell Signals</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-inbox display-1 text-muted"></i>
+    <h3 class="mt-3">No ETFs Tracked Yet</h3>
+    <p class="text-muted">Add your first covered call ETF to start tracking NAV erosion.</p>
+    <a href="{{ url_for('add_etf') }}" class="btn btn-primary btn-lg">
+        <i class="bi bi-plus-circle"></i> Add Your First ETF
+    </a>
+</div>
+{% endif %}
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Understanding the Metrics</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <h6>NAV Erosion</h6>
+                <p class="small text-muted">
+                    The percentage change in share price over 12 months.
+                    Negative values indicate the fund is paying out more than it earns.
+                </p>
+            </div>
+            <div class="col-md-4">
+                <h6>True Return</h6>
+                <p class="small text-muted">
+                    Your actual return including distributions received.
+                    This shows if income offsets NAV decline.
+                </p>
+            </div>
+            <div class="col-md-4">
+                <h6>Status Flags</h6>
+                <p class="small text-muted">
+                    <span class="badge bg-success">OK</span> NAV erosion above -6%<br>
+                    <span class="badge bg-warning">WARNING</span> NAV erosion -6% to -10%<br>
+                    <span class="badge bg-danger">SELL</span> NAV erosion below -10%
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

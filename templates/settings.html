@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - NAV Erosion Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">Settings</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4"><i class="bi bi-gear"></i> Settings</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <!-- Default Thresholds -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-sliders"></i> Default Thresholds</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('settings') }}">
+                    <div class="mb-3">
+                        <label for="default_warn_threshold" class="form-label">Warning Threshold (%)</label>
+                        <input type="number"
+                               class="form-control"
+                               id="default_warn_threshold"
+                               name="default_warn_threshold"
+                               value="{{ settings.get('default_warn_threshold', '-6') }}"
+                               step="0.5">
+                        <div class="form-text">NAV erosion below this triggers WARNING (default: -6%)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="default_sell_threshold" class="form-label">Sell Threshold (%)</label>
+                        <input type="number"
+                               class="form-control"
+                               id="default_sell_threshold"
+                               name="default_sell_threshold"
+                               value="{{ settings.get('default_sell_threshold', '-10') }}"
+                               step="0.5">
+                        <div class="form-text">NAV erosion below this triggers SELL (default: -10%)</div>
+                    </div>
+
+                    <hr>
+
+                    <h6><i class="bi bi-envelope"></i> Email Notifications (Optional)</h6>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox"
+                               class="form-check-input"
+                               id="email_enabled"
+                               name="email_enabled"
+                               value="on"
+                               {{ 'checked' if settings.get('email_enabled') == 'on' else '' }}>
+                        <label class="form-check-label" for="email_enabled">Enable email alerts</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="smtp_server" class="form-label">SMTP Server</label>
+                        <input type="text"
+                               class="form-control"
+                               id="smtp_server"
+                               name="smtp_server"
+                               value="{{ settings.get('smtp_server', '') }}"
+                               placeholder="smtp.gmail.com">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="smtp_port" class="form-label">SMTP Port</label>
+                        <input type="number"
+                               class="form-control"
+                               id="smtp_port"
+                               name="smtp_port"
+                               value="{{ settings.get('smtp_port', '587') }}"
+                               placeholder="587">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="smtp_user" class="form-label">SMTP Username</label>
+                        <input type="text"
+                               class="form-control"
+                               id="smtp_user"
+                               name="smtp_user"
+                               value="{{ settings.get('smtp_user', '') }}"
+                               placeholder="your-email@gmail.com">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="smtp_password" class="form-label">SMTP Password</label>
+                        <input type="password"
+                               class="form-control"
+                               id="smtp_password"
+                               name="smtp_password"
+                               value="{{ settings.get('smtp_password', '') }}"
+                               placeholder="App password">
+                        <div class="form-text">For Gmail, use an App Password</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="alert_email" class="form-label">Alert Email Address</label>
+                        <input type="email"
+                               class="form-control"
+                               id="alert_email"
+                               name="alert_email"
+                               value="{{ settings.get('alert_email', '') }}"
+                               placeholder="alerts@example.com">
+                        <div class="form-text">Where to send alert notifications</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <!-- Per-ETF Thresholds -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-collection"></i> ETF-Specific Thresholds</h5>
+            </div>
+            <div class="card-body">
+                {% if etfs %}
+                <p class="text-muted small">Set custom thresholds for individual ETFs:</p>
+                {% for etf in etfs %}
+                <form method="POST" action="{{ url_for('update_etf_settings', etf_id=etf.id) }}" class="mb-3 pb-3 border-bottom">
+                    <div class="d-flex align-items-center mb-2">
+                        <strong>{{ etf.name }}</strong>
+                        <code class="ms-2">{{ etf.ticker }}</code>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Warn</span>
+                                <input type="number"
+                                       class="form-control"
+                                       name="warn_threshold"
+                                       value="{{ (etf.warn_threshold * 100)|round(1) }}"
+                                       step="0.5">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Sell</span>
+                                <input type="number"
+                                       class="form-control"
+                                       name="sell_threshold"
+                                       value="{{ (etf.sell_threshold * 100)|round(1) }}"
+                                       step="0.5">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+                        </div>
+                    </div>
+                </form>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted">No ETFs added yet. Add ETFs from the dashboard to configure individual thresholds.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- About Section -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> About NAV Erosion</h5>
+            </div>
+            <div class="card-body">
+                <h6>What is NAV Erosion?</h6>
+                <p class="small text-muted">
+                    NAV (Net Asset Value) erosion occurs when a covered call ETF's share price
+                    declines over time, often because distributions exceed the income generated
+                    from options premiums and dividends.
+                </p>
+
+                <h6>Understanding the Thresholds</h6>
+                <ul class="small text-muted">
+                    <li><strong>OK:</strong> NAV erosion is above the warning threshold - the ETF is performing acceptably</li>
+                    <li><strong>WARNING:</strong> NAV erosion is between warning and sell thresholds - consider monitoring closely</li>
+                    <li><strong>SELL:</strong> NAV erosion has exceeded the sell threshold - consider reviewing your position</li>
+                </ul>
+
+                <h6>True Return</h6>
+                <p class="small text-muted">
+                    True return accounts for distributions received. Even if NAV erodes,
+                    your total return may still be positive if distributions offset the decline.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
